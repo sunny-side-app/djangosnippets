@@ -21,5 +21,6 @@ from snippets import views
 urlpatterns = [
     path('', views.top, name='top'),
     path('snippets/', include('snippets.urls')),# snippets/urls.py で定義したURLを読み込む
+    path('accounts/', include('accounts.urls')), # accounts/urls.py で定義したURLを読み込む
     path('admin/', admin.site.urls),
 ]
