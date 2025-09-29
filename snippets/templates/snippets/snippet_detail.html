@@ -1,14 +1,55 @@
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Djangoスニペット</title>
-</head>
-<body>
-<div>
-    <h2>{{ snippet.title }} by {{ snippet.created_by.username }}</h2>
-    <small>投稿日: {{ snippet.created_at }}</small>
-    <pre>{{ snippet.code }}</pre>
-    <p>{{ snippet.description }}</p>
-</div>
-</body>
-</html>
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block main %}
+  <div class="mb-4">
+    <h2 class="mb-1">
+      {{ snippet.title }}
+      <small class="text-muted">by {{ snippet.created_by.username }}</small>
+    </h2>
+    <small class="text-muted">投稿日: {{ snippet.created_at }}</small>
+
+    <pre class="mt-3">{{ snippet.code }}</pre>
+    <p class="mt-3">{{ snippet.description|linebreaksbr }}</p>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="mb-0">
+      コメント <span>{{ comments|length }}</span> 件
+    </h3>
+  </div>
+
+  {# コメント一覧 #}
+  {% if comments %}
+    <ul class="list-group mb-4">
+      {% for c in comments %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <strong>{{ c.commented_by.username }}</strong>
+            <small class="text-muted">{{ c.created_at }}</small>
+          </div>
+          <div class="mt-2">{{ c.text|linebreaksbr }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">まだコメントはありません。</p>
+  {% endif %}
+
+  {# インライン投稿フォーム（ログイン時のみ表示） #}
+  {% if user.is_authenticated %}
+    <hr class="my-4">
+    <h4 class="mb-3">コメントを投稿</h4>
+    <form method="post" action="">
+      {% csrf_token %}
+      {% bootstrap_form comment_form %}
+      {% bootstrap_button button_type="submit" content="投稿" %}
+    </form>
+  {% else %}
+    <div class="alert alert-info mt-4">
+      コメントするには
+      <a href="{% url 'login' %}?next={% url 'snippet_detail' snippet_id=snippet.id %}">ログイン</a>
+      してください。
+    </div>
+  {% endif %}
+{% endblock %}

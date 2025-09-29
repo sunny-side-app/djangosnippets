@@ -1,9 +1,13 @@
+from django.conf import settings
+from django.contrib import messages
+
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 
 from snippets.models import Snippet
 from snippets.forms import SnippetForm
+from snippets.forms import CommentForm
 
 
 def top(request):
@@ -41,7 +45,35 @@ def snippet_edit(request, snippet_id):
 
 
 def snippet_detail(request, snippet_id):
-    snippet = get_object_or_404(Snippet, pk=snippet_id)
-    context = {'snippet': snippet}
-    return render(request, 'snippets/snippet_detail.html',
-                  context=context)
+        # 投稿者も合わせて効率よく取得
+    snippet = get_object_or_404(
+        Snippet.objects.select_related('created_by'),
+        pk=snippet_id
+    )
+
+    # 逆参照名: related_name を付けた場合は snippet.comments
+    # 付けていないなら snippet.comment_set に置換
+    comments_qs = snippet.comments.select_related('commented_by').order_by('-created_at')
+
+    if request.method == 'POST':
+        # 未ログイン投稿はログインへ
+        if not request.user.is_authenticated:
+            return redirect(f"{settings.LOGIN_URL}?next={request.path}")
+
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.commented_to = snippet
+            comment.commented_by = request.user
+            comment.save()
+            messages.success(request, 'コメントを投稿しました。')
+            return redirect('snippet_detail', snippet_id=snippet_id)
+    else:
+        form = CommentForm()
+
+    context = {
+        'snippet': snippet,
+        'comments': comments_qs,
+        'comment_form': form,  # ← テンプレで描画
+    }
+    return render(request, 'snippets/snippet_detail.html', context)
